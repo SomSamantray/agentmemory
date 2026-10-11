@@ -6657,6 +6657,10 @@
       store.loaded.action = false;
       renderActions();
       await ensureLoaded('action');
+      if (state.actions.selectedId && !store.entities.action[state.actions.selectedId]) {
+        state.actions.detailAttemptedId = '';
+        state.actions.detailRequestFailedId = '';
+      }
       renderActions();
     }
 

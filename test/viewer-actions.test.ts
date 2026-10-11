@@ -109,19 +109,21 @@ describe("viewer actions", () => {
       "ensureLoaded",
       `return ${extractFunction("retryActionList")};`,
     ) as (
-      state: { actions: { loadError: boolean } },
-      store: { loaded: { action: boolean }; loading: { action: Promise<void> | null } },
+      state: { actions: { loadError: boolean; selectedId: string; detailAttemptedId: string; detailRequestFailedId: string } },
+      store: { loaded: { action: boolean }; loading: { action: Promise<void> | null }; entities: { action: Record<string, unknown> } },
       renderActions: () => void,
       ensureLoaded: (kind: string) => Promise<void>,
     ) => () => Promise<void>;
-    const state = { actions: { loadError: true } };
-    const store = { loaded: { action: true }, loading: { action: null } };
+    const state = { actions: { loadError: true, selectedId: "act_deep_link", detailAttemptedId: "act_deep_link", detailRequestFailedId: "act_deep_link" } };
+    const store = { loaded: { action: true }, loading: { action: null }, entities: { action: {} } };
     const renderActions = vi.fn();
     const ensureLoaded = vi.fn(async () => { state.actions.loadError = false; store.loaded.action = true; });
 
     await retryActionList(state, store, renderActions, ensureLoaded)();
 
     expect(state.actions.loadError).toBe(false);
+    expect(state.actions.detailAttemptedId).toBe("");
+    expect(state.actions.detailRequestFailedId).toBe("");
     expect(store.loaded.action).toBe(true);
     expect(ensureLoaded).toHaveBeenCalledWith("action");
     expect(renderActions).toHaveBeenCalledTimes(2);

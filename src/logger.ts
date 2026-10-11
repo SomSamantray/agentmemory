@@ -16,7 +16,9 @@ function fmt(level: string, msg: string, fields: Fields): string {
 function emit(level: string, msg: string, fields: Fields): void {
   try {
     const line = fmt(level, msg, fields) + "\n";
-    if (level === "error") process.stderr.write(line);
+    if (level === "error" || process.env["AGENTMEMORY_MCP_STDIO__"] === "1") {
+      process.stderr.write(line);
+    }
     else process.stdout.write(line);
   } catch {
     // stdout or stderr is unavailable in some test/worker contexts — swallow

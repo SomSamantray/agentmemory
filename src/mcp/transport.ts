@@ -250,6 +250,7 @@ export function createStdioTransport(handler: RequestHandler): {
 
   return {
     start() {
+      process.env["AGENTMEMORY_MCP_STDIO__"] = "1";
       parser = createMessageParser((message) => {
         queue = queue.then(() => processLine(message, handler, writeResponse));
         void queue.catch((err) => {
@@ -264,6 +265,7 @@ export function createStdioTransport(handler: RequestHandler): {
     },
     stop() {
       process.stdin.off("data", onData);
+      delete process.env["AGENTMEMORY_MCP_STDIO__"];
       parser = null;
     },
   };

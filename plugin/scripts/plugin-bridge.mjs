@@ -244,6 +244,7 @@ function createStdioTransport(handler) {
 	const onData = (chunk) => parser?.push(chunk);
 	return {
 		start() {
+			process.env["AGENTMEMORY_MCP_STDIO__"] = "1";
 			parser = createMessageParser((message) => {
 				queue = queue.then(() => processLine(message, handler, writeResponse));
 				queue.catch((err) => {
@@ -254,6 +255,7 @@ function createStdioTransport(handler) {
 		},
 		stop() {
 			process.stdin.off("data", onData);
+			delete process.env["AGENTMEMORY_MCP_STDIO__"];
 			parser = null;
 		}
 	};

@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { logger } from "../src/logger.js";
+import { createStdioTransport } from "../src/mcp/transport.js";
 
 describe("logger output streams", () => {
   afterEach(() => {
+    delete process.env["AGENTMEMORY_MCP_STDIO__"];
     vi.restoreAllMocks();
   });
 
@@ -21,5 +23,22 @@ describe("logger output streams", () => {
     expect(stderrWrite.mock.calls.map(([line]) => line)).toEqual([
       "[agentmemory] error failed\n",
     ]);
+  });
+
+  it("keeps routine logs off stdout while MCP stdio is active", () => {
+    const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const transport = createStdioTransport(async () => ({}));
+    transport.start();
+
+    logger.info("request handled");
+    logger.warn("request retried");
+    transport.stop();
+    logger.info("worker log");
+
+    expect(stdoutWrite).toHaveBeenCalledTimes(1);
+    expect(stdoutWrite).toHaveBeenCalledWith("[agentmemory] info worker log\n");
+    expect(stderrWrite).toHaveBeenNthCalledWith(1, "[agentmemory] info request handled\n");
+    expect(stderrWrite).toHaveBeenNthCalledWith(2, "[agentmemory] warn request retried\n");
   });
 });

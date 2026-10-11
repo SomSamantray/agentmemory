@@ -6528,6 +6528,7 @@
         setViewHtml(document.getElementById('actions-list'), a.loadError
           ? '<div class="empty-state compact"><div class="empty-title">Could not load actions</div><div class="empty-what">Check that agentmemory is running, then try again.</div><button type="button" class="btn" data-action="action-list-retry">Retry</button></div>'
           : skeleton(8));
+        renderActionDetail({});
         return;
       }
       var rows = actionRows();
@@ -6591,6 +6592,11 @@
         html = '<div class="inline-note"><strong>Could not refresh actions.</strong> Showing previously loaded actions. <button type="button" class="btn" data-action="action-list-retry">Retry</button></div>' + html;
       }
       setViewHtml(document.getElementById('actions-list'), html);
+      renderActionDetail(frontierIds);
+    }
+
+    function renderActionDetail(frontierIds) {
+      var a = state.actions;
       var detail = document.getElementById('actions-detail');
       var sel = a.selectedId ? store.entities.action[a.selectedId] : null;
       if (a.selectedId && !sel) {

@@ -94,6 +94,13 @@ describe("viewer actions", () => {
     expect(extractFunction("handlePageAction")).toMatch(/action === 'action-list-retry'\) \{ retryActionList\(\); return true; \}/);
   });
 
+  it("continues selected-action lookup when the action list has failed", () => {
+    const renderActions = extractFunction("renderActions");
+    const renderActionDetail = extractFunction("renderActionDetail");
+    expect(renderActions).toMatch(/if \(!store\.loaded\.action && !all\.length\) \{[\s\S]*?renderActionDetail\(\{\}\);\s*return;/);
+    expect(renderActionDetail).toMatch(/if \(a\.selectedId && !sel\) \{\s*ensureActionById\(a\.selectedId\);/);
+  });
+
   it("retries the action collection and clears its failed state before loading", async () => {
     const retryActionList = new Function(
       "state",

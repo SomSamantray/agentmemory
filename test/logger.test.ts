@@ -28,17 +28,22 @@ describe("logger output streams", () => {
   it("keeps routine logs off stdout while MCP stdio is active", () => {
     const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    const transport = createStdioTransport(async () => ({}));
-    transport.start();
+    const firstTransport = createStdioTransport(async () => ({}));
+    const secondTransport = createStdioTransport(async () => ({}));
+    firstTransport.start();
+    secondTransport.start();
 
     logger.info("request handled");
     logger.warn("request retried");
-    transport.stop();
+    firstTransport.stop();
+    logger.warn("second transport active");
+    secondTransport.stop();
     logger.info("worker log");
 
     expect(stdoutWrite).toHaveBeenCalledTimes(1);
     expect(stdoutWrite).toHaveBeenCalledWith("[agentmemory] info worker log\n");
     expect(stderrWrite).toHaveBeenNthCalledWith(1, "[agentmemory] info request handled\n");
     expect(stderrWrite).toHaveBeenNthCalledWith(2, "[agentmemory] warn request retried\n");
+    expect(stderrWrite).toHaveBeenNthCalledWith(3, "[agentmemory] warn second transport active\n");
   });
 });

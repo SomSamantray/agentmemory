@@ -7845,6 +7845,14 @@
     }
 
     var resyncing = null;
+    function resetLoadedKindForReload(kind) {
+      store.loaded[kind] = false;
+      if (kind === 'action') {
+        state.actions.detailAttemptedId = '';
+        state.actions.detailRequestFailedId = '';
+      }
+    }
+
     async function resyncAfterConnect(firstConnect) {
       openBootGate();
       if (resyncing) return resyncing;
@@ -7854,7 +7862,7 @@
           await loadSnapshot();
           scheduleHealthStaleCheck();
           if (!firstConnect || reloadKinds.length) {
-            reloadKinds.forEach(function(k) { store.loaded[k] = false; });
+            reloadKinds.forEach(resetLoadedKindForReload);
             await Promise.all(reloadKinds.map(ensureLoaded));
             state.graph.dirty = state.graph.loaded;
             state.activity.loaded = false;

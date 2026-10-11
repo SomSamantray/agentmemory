@@ -23,6 +23,29 @@ describe("viewer actions", () => {
     expect(viewer).toMatch(/action: \{ path: 'actions', key: 'actions', allPages: true \}/);
   });
 
+  it("resets selected-action lookup state when reloading actions", () => {
+    const resetLoadedKindForReload = new Function(
+      "state",
+      "store",
+      `return ${extractFunction("resetLoadedKindForReload")};`,
+    ) as (
+      state: { actions: { detailAttemptedId: string; detailRequestFailedId: string } },
+      store: { loaded: Record<string, boolean> },
+    ) => (kind: string) => void;
+    const state = { actions: { detailAttemptedId: "act_selected", detailRequestFailedId: "act_selected" } };
+    const store = { loaded: { action: true, lesson: true } };
+    const reset = resetLoadedKindForReload(state, store);
+
+    reset("lesson");
+    expect(store.loaded.lesson).toBe(false);
+    expect(state.actions.detailAttemptedId).toBe("act_selected");
+
+    reset("action");
+    expect(store.loaded.action).toBe(false);
+    expect(state.actions.detailAttemptedId).toBe("");
+    expect(state.actions.detailRequestFailedId).toBe("");
+  });
+
   it("follows action cursors and combines all pages", async () => {
     const loadAllPages = new Function(
       "listOr",

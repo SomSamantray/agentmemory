@@ -1676,7 +1676,7 @@
       audit: { opFilter: '', selectedIdx: null, from: '', to: '', q: '', query: null, loadingMore: false, exhausted: {}, fresh: {} },
       activity: { loaded: false, observations: [], sessionCount: 0, typeFilter: '', fileFilter: '', day: '' },
       lessons: { search: '', selectedId: null, projectFilter: '', notice: null, busy: '' },
-      actions: { frontier: [], statusFilter: '', search: '', selectedId: null, notice: null, busy: '', detailLoading: '', detailAttemptedId: '', detailRequestFailedId: '' },
+      actions: { frontier: [], statusFilter: '', search: '', selectedId: null, notice: null, busy: '', detailLoading: '', detailAttemptedId: '', detailRequestFailedId: '', loadError: false },
       crystals: { search: '', selectedId: null },
       profile: { loaded: false, selectedProject: '', data: null, dataProject: '', userPicked: false, notice: null },
       health: { error: null, checking: false, consolidating: false, reveal: '' },
@@ -2343,7 +2343,10 @@
           } else {
             result = await apiGet(spec.path);
           }
-          if (result === null) return;
+          if (result === null) {
+            if (kind === 'action') state.actions.loadError = true;
+            return;
+          }
           replaceBucket(kind, listOr([], result, spec.key, spec.fallbackKey));
           if (kind === 'memory') {
             state.memories.nextCursor = result.nextCursor || null;
@@ -2362,6 +2365,9 @@
           }
           replayEventsSince(seqAtStart, kind);
           store.loaded[kind] = true;
+          if (kind === 'action') state.actions.loadError = false;
+        } catch {
+          if (kind === 'action') state.actions.loadError = true;
         } finally {
           store.loading[kind] = null;
         }
@@ -6516,12 +6522,14 @@
     function renderActions() {
       var el = document.getElementById('view-actions');
       var a = state.actions;
-      if (!store.loaded.action) {
+      var all = entityList('action');
+      if (!store.loaded.action && !all.length) {
         listDetailShell(el, 'actions', '');
-        setViewHtml(document.getElementById('actions-list'), skeleton(8));
+        setViewHtml(document.getElementById('actions-list'), a.loadError
+          ? '<div class="empty-state compact"><div class="empty-title">Could not load actions</div><div class="empty-what">Check that agentmemory is running, then try again.</div><button type="button" class="btn" data-action="action-list-retry">Retry</button></div>'
+          : skeleton(8));
         return;
       }
-      var all = entityList('action');
       var rows = actionRows();
       var frontierIds = {};
       (a.frontier || []).forEach(function(f) {
@@ -6579,6 +6587,9 @@
         html += '</tbody></table></div>';
         if (all.length < 8) html += usageCard('action');
       }
+      if (a.loadError) {
+        html = '<div class="inline-note"><strong>Could not refresh actions.</strong> Showing previously loaded actions. <button type="button" class="btn" data-action="action-list-retry">Retry</button></div>' + html;
+      }
       setViewHtml(document.getElementById('actions-list'), html);
       var detail = document.getElementById('actions-detail');
       var sel = a.selectedId ? store.entities.action[a.selectedId] : null;
@@ -6632,6 +6643,15 @@
       a.detailAttemptedId = '';
       a.detailRequestFailedId = '';
       return ensureActionById(id);
+    }
+
+    async function retryActionList() {
+      if (store.loading.action) return store.loading.action;
+      state.actions.loadError = false;
+      store.loaded.action = false;
+      renderActions();
+      await ensureLoaded('action');
+      renderActions();
     }
 
     async function setActionStatus(id, status) {
@@ -6736,6 +6756,7 @@
       }
       if (action === 'action-close') { state.actions.selectedId = null; setRouteEntity('actions', ''); renderActions(); return true; }
       if (action === 'action-retry') { retryActionById(state.actions.selectedId); return true; }
+      if (action === 'action-list-retry') { retryActionList(); return true; }
       if (action === 'action-set-status') { setActionStatus(target.getAttribute('data-action-id'), target.getAttribute('data-status')); return true; }
       if (action === 'action-clear-filters') { state.actions.search = ''; state.actions.statusFilter = ''; var ai = document.getElementById('actions-search'); if (ai) ai.value = ''; renderActions(); return true; }
       if (action === 'activity-type' || action === 'activity-file' || action === 'activity-day' || action === 'activity-clear') { handleActivityAction(action, target); return true; }

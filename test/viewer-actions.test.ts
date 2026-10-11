@@ -67,6 +67,59 @@ describe("viewer actions", () => {
     expect(result.actions).toEqual([{ id: "a" }, { id: "b" }]);
   });
 
+  it("stops the all-pages load when a later page fails", async () => {
+    const loadAllPages = new Function(
+      "listOr",
+      `return ${extractFunction("loadAllPages")};`,
+    )((fallback: unknown[], result: Record<string, unknown>, key: string) => result[key] || fallback) as (
+      spec: { path: string; key: string },
+      apiGet: (path: string) => Promise<Record<string, unknown> | null>,
+    ) => Promise<Record<string, unknown> | null>;
+    const apiGet = vi.fn()
+      .mockResolvedValueOnce({ actions: [{ id: "a" }], nextCursor: "next" })
+      .mockResolvedValueOnce(null);
+
+    await expect(loadAllPages({ path: "actions", key: "actions" }, apiGet)).resolves.toBeNull();
+    expect(apiGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("exposes retry after an action collection load failure while retaining cached rows", () => {
+    const ensureLoaded = extractFunction("ensureLoaded");
+    const renderActions = extractFunction("renderActions");
+    expect(ensureLoaded).toMatch(/if \(result === null\) \{\s*if \(kind === 'action'\) state\.actions\.loadError = true;/);
+    expect(ensureLoaded).toMatch(/if \(kind === 'action'\) state\.actions\.loadError = false;/);
+    expect(renderActions).toMatch(/var all = entityList\('action'\);\s*if \(!store\.loaded\.action && !all\.length\)/);
+    expect(renderActions).toMatch(/data-action="action-list-retry"/);
+    expect(renderActions).toMatch(/Showing previously loaded actions/);
+    expect(extractFunction("handlePageAction")).toMatch(/action === 'action-list-retry'\) \{ retryActionList\(\); return true; \}/);
+  });
+
+  it("retries the action collection and clears its failed state before loading", async () => {
+    const retryActionList = new Function(
+      "state",
+      "store",
+      "renderActions",
+      "ensureLoaded",
+      `return ${extractFunction("retryActionList")};`,
+    ) as (
+      state: { actions: { loadError: boolean } },
+      store: { loaded: { action: boolean }; loading: { action: Promise<void> | null } },
+      renderActions: () => void,
+      ensureLoaded: (kind: string) => Promise<void>,
+    ) => () => Promise<void>;
+    const state = { actions: { loadError: true } };
+    const store = { loaded: { action: true }, loading: { action: null } };
+    const renderActions = vi.fn();
+    const ensureLoaded = vi.fn(async () => { state.actions.loadError = false; store.loaded.action = true; });
+
+    await retryActionList(state, store, renderActions, ensureLoaded)();
+
+    expect(state.actions.loadError).toBe(false);
+    expect(store.loaded.action).toBe(true);
+    expect(ensureLoaded).toHaveBeenCalledWith("action");
+    expect(renderActions).toHaveBeenCalledTimes(2);
+  });
+
   it("fetches a selected action by id when it is missing from the loaded list", async () => {
     const loadEnsureActionById = new Function(
       "state",
